@@ -1,5 +1,8 @@
 # Kubernetes-cluster-using-ansible
 Demo version for study practise (playbook will be modified)
+This playbook installs all prerequisites for kubernetes cluster and starts it.
+For cidr subnetwork changes flannel file need to be configured
+
 # VM config
 - Remote system: amd64 Ubuntu server 22.04.4 (4 cores, 2Gb RAM, 14Gb disk)
 - VM Network: adapter1 - host-only (Manual configuration), adapter2 - NAT (DHCP)
