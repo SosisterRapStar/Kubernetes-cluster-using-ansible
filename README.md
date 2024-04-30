@@ -10,7 +10,7 @@ Demo version for study practise (playbook will be modified)
 - Container cli: nerdctl v 2.0.0-beta.4
 - Cgroup driver: systemd
 - Runc version: 1.1.12
-- CNI pluggin: flannel
+- CNI plugin: flannel
 - Kubernetes version: 1.29
 - Ingress controller: inress-nginx (hostnetwork approach)
 
