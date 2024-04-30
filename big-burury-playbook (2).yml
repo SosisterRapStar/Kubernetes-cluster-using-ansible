@@ -1,0 +1,296 @@
+---
+- name:  Install containerd
+  hosts: kuberclient
+  become: yes
+  vars:
+    CNI_version: 1.4.1
+    CNI_checksum: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz.sha256"
+
+    runc_version: 1.1.12
+    runc_checksum: aadeef400b8f05645768c1476d1023f7875b78f52c7ff1967a6dbce236b8cbd8
+    
+    checksum_algo: sha256
+    containerd_version: 1.7.16
+    place: "/home/{{ansible_user}}"
+    arch: amd64
+    containerd_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz"
+    containerd_checksum_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz.sha256sum"
+  tasks:
+    - name: Download containerd
+      get_url:
+        url: "{{containerd_link}}"
+        dest: "{{place}}"
+        checksum: "{{checksum_algo}}:{{containerd_checksum_link}}"
+      register: containerd_downloaded
+
+    - name: Unpack containerd
+      unarchive:
+        src: "{{containerd_downloaded.dest}}" 
+        dest: /usr/local
+        remote_src: yes
+        
+    - name: Downloading containerd.service to systemd
+      get_url:
+        url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service 
+        dest: /usr/lib/systemd/system/containerd.service
+      
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable containerd service
+      systemd:
+        name: containerd
+        state: started
+        enabled: yes
+
+    - name: Downloading runc
+      get_url:
+         url: "https://github.com/opencontainers/runc/releases/download/v{{runc_version}}/runc.{{arch}}"
+         dest: "{{place}}"
+         checksum: "{{checksum_algo}}:{{runc_checksum}}"
+      register: runc_downloaded
+      
+
+    - name: Installing runc to /usr/local/sbin/runc
+      command: "install -m 755 {{place}}/runc.amd64 /usr/local/sbin/runc"
+      tags: task1
+
+    - name: Downloading CNI plugins
+      get_url:
+        url: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz"
+        dest: "{{place}}"
+        checksum: "{{checksum_algo}}:{{CNI_checksum}}"
+      register: CNI_downloaded
+      tags: task2
+
+    - name: Create cni/bin
+      file:
+        path: /opt/cni/bin
+        state: directory
+        mode: '0755'
+      tags: task3
+
+    - name: Unpack CNI
+      unarchive:
+        src: "{{CNI_downloaded.dest}}" 
+        dest: /opt/cni/bin
+        remote_src: yes
+      tags: task4
+---
+- name:  Containerd configurating
+  hosts: kuberclient
+  become: yes
+  vars:
+     containerd_config_path: /home/vanya/config.toml
+  tasks:
+      - name: Creating containerd dir
+        file:
+          path: /etc/containerd
+          state: directory
+      
+      - name: Copy file
+        copy:
+          src: "{{containerd_config_path}}"
+          dest: /etc/containerd/
+---
+- name:  Install nerdctl
+  hosts: kuberclient
+  become: yes
+  vars:
+    checksum_algo: sha256
+    place: "/home/{{ansible_user}}"
+   
+  tasks:
+      - name: Download nerdctl
+        get_url:
+          url: https://github.com/containerd/nerdctl/releases/download/v2.0.0-beta.4/nerdctl-2.0.0-beta.4-linux-amd64.tar.gz
+          dest: "{{place}}"
+        register: downloaded
+      
+      - name: Unpack nerdctl
+        unarchive:
+          src: "{{downloaded.dest}}" 
+          dest: /usr/local/bin
+          remote_src: yes
+---
+- name: Network configurating for kubernetes 
+  hosts: kuberclient
+  become: yes
+  tasks:
+    - name: Creating k8s.conf and applied modules
+      lineinfile:
+        path: /etc/modules-load.d/k8s.conf
+        line: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Load overlay and br_netfilter
+      command:
+        cmd: modprobe {{ item }}
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Setting iptables adn ip forwarding for kubernetes
+      copy:
+        dest: /etc/sysctl.d/k8s.conf
+        content: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Appling system parametres
+      command: sysctl --system
+
+    - name: Turning off swap
+      shell:
+         cmd: |
+           swapoff -a
+           sed -i '/\sswap\s/s/^/#/' /etc/fstab
+---
+- name:  Installing kubeadm
+  hosts: kuberclient
+  become: yes
+  vars:
+    kubernetes_version: 1.29
+    
+   
+  tasks:
+      - name: Updating apt
+        apt:
+          update_cache: yes
+      
+      - name: Installing apt-transport-https, ca-certificates , curl, gpg
+        apt:
+          name:
+           - apt-transport-https
+           - ca-certificates
+           - curl
+           - gpg
+          state: present
+          
+      
+      - name: Download GPG key
+        get_url:
+          url: "https://pkgs.k8s.io/core:/stable:/v{{kubernetes_version}}/deb/Release.key"
+          dest: "/tmp/kubernetes-gpg-key"
+
+      - name: Convert GPG key to keyring format
+        shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+           
+      - name: Adding repo
+        shell: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+
+      - name: Updating cache
+        apt:
+           update_cache: yes
+      
+      - name: Installing kubeadm, kubelet, kubectl
+        apt:
+          name:
+           - kubelet
+           - kubeadm
+           - kubectl
+          state: present
+          force_apt_get: yes
+
+      - name: Mark Kubernetes packages
+        dpkg_selections:
+          name: "{{ item }}"
+          selection: hold
+        loop:
+          - kubelet
+          - kubeadm
+          - kubectl
+---
+- name: Init cluster
+  hosts: kuberclient
+  become: yes
+  vars:
+     cidr_subnetwork: 10.244.0.0/16
+     path_to_flannel_file: /home/vanya/flannel.yml
+
+  tasks:
+    - name: Change node from NAT to host_addres
+       lineinfile:
+         path: /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf
+         regexp: '^ExecStart=.*$'
+         line: "ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --node-ip={{ansible_host}}"
+         backrefs: yes
+
+    - name: Run kubeadm init
+      shell: "kubeadm init --apiserver-advertise-address={{ansible_host}} --pod-network-cidr {{cidr_subnetwork}}"
+
+    - name: create .kube directory on cluster machine
+      file:
+        path: $HOME/.kube
+        state: directory
+        mode: 0755
+
+    - name: Copy kubeconfig file to user's home directory
+      command:
+        cmd: "cp -i /etc/kubernetes/admin.conf $HOME/.kube/config"
+
+    - name: Set ownership of kubeconfig file
+      shell: "chown $(id -u):$(id -g) $HOME/.kube/config"
+
+    - name: Copy flannel 
+      copy:
+         src: "{{path_to_flannel_file}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Initial CNI plugin (flannel)
+      shell: "kubectl apply -f /home/{{ansible_user}}/flannel.yml"
+      
+
+    - name: Turning off taints
+      shell: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+---
+- name:  Deploying apps and ingress controller
+  hosts: kuberclient
+  become: yes
+  vars:
+    local_path_ingress_nginx_config: /home/vanya/ingress-nginx-hostnetwork-config.yml
+    local_path_deploy1: /home/vanya/deploy1.yml
+    local_path_deploy2: /home/vanya/deploy2.yml
+    local_path_ingress: /home/vanya/ingress.yml
+  
+  tasks:
+    - name: Copy ingress-nginx-config
+      copy:
+         src: "{{local_path_ingress_nginx_config}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply ingress-nginx controller
+      shell: "kubectl apply -f /home/{{ansible_user}}/ingress-nginx-hostnetwork-config.yml"
+      
+    - name: Copy deploy1 
+      copy:
+         src: "{{local_path_deploy1}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply deploy1
+      shell: "kubectl apply -f /home/{{ansible_user}}/deploy1.yml"
+      
+    - name: Copy deploy2
+      copy:
+         src: "{{local_path_deploy2}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply deploy2
+      shell: "kubectl apply -f /home/{{ansible_user}}/deploy2.yml"
+      
+
+    - name: Copy ingress
+      copy:
+         src: "{{local_path_ingress}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply ingress
+      shell: "kubectl apply -f /home/{{ansible_user}}/ingress.yml"
+      
+  
