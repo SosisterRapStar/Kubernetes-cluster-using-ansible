@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-2-dp
+  labels:
+    app: hello-dp
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: hello-2
+  template:
+    metadata:
+      name: hello-template
+      labels:
+        app: hello-2
+    spec:
+      containers:
+      - name: hello-cont
+        image: soso349/hello2:1
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-cluster-ip-v2
+spec:
+  selector:
+    app: hello-2
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port:  80
+      targetPort:  8000
