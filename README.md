@@ -12,7 +12,7 @@ Demo version for study practise (playbook will be modified)
 - Runc version: 1.1.12
 - CNI plugin: flannel
 - Kubernetes version: 1.29
-- Ingress controller: inress-nginx (hostnetwork approach)
+- Ingress controller: ingress-nginx (hostnetwork approach)
 
 # web-apps config
 - fastAPI + uvicorn port 8000
