@@ -82,7 +82,7 @@
   hosts: kuberclient
   become: yes
   vars:
-     containerd_config_path: /home/vanya/config.toml
+     containerd_config_path: "{{playbook_dir}}/config.toml"
   tasks:
       - name: Creating containerd dir
         file:
@@ -212,7 +212,7 @@
   become: yes
   vars:
      cidr_subnetwork: 10.244.0.0/16
-     path_to_flannel_file: /home/vanya/flannel.yml
+     path_to_flannel_file: "{{playbook_dir}}/flannel.yml"
 
   tasks:
     - name: Change node from NAT to host_addres
@@ -254,10 +254,10 @@
   hosts: kuberclient
   become: yes
   vars:
-    local_path_ingress_nginx_config: /home/vanya/ingress-nginx-hostnetwork-config.yml
-    local_path_deploy1: /home/vanya/deploy1.yml
-    local_path_deploy2: /home/vanya/deploy2.yml
-    local_path_ingress: /home/vanya/ingress.yml
+    local_path_ingress_nginx_config: "{{playbook_dir}}/ingress-nginx-hostnetwork-config.yml"
+    local_path_deploy1: "{{playbook_dir}}/deploy1.yml"
+    local_path_deploy2: "{{playbook_dir}}/deploy2.yml"
+    local_path_ingress: "{{playbook_dir}}/ingress.yml"
   
   tasks:
     - name: Copy ingress-nginx-config
@@ -293,4 +293,3 @@
     - name: Apply ingress
       shell: "kubectl apply -f /home/{{ansible_user}}/ingress.yml"
       
-  
