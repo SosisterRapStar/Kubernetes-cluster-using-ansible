@@ -1,4 +1,4 @@
-ansible_host: 192.168.56.2 
-ansible_user: user 
-ansible_password: 1234
-ansible_become_pass: 1234
+ansible_host: 192.168.56.2 (write here our host-only VM ip)
+ansible_user: user (write here our VM user)
+ansible_password: 1234 (write here our VM password)
+ansible_become_pass: 1234 (write here our VM password))
