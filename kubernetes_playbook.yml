@@ -1,135 +1,135 @@
-# ---
-# - name:  Install containerd
-#   hosts: kuberclient
-#   become: yes
-#   vars:
-#     CNI_version: 1.4.1
-#     CNI_checksum: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz.sha256"
+---
+- name:  Install containerd
+  hosts: kuberclient
+  become: yes
+  vars:
+    CNI_version: 1.4.1
+    CNI_checksum: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz.sha256"
 
-#     runc_version: 1.1.12
-#     runc_checksum: aadeef400b8f05645768c1476d1023f7875b78f52c7ff1967a6dbce236b8cbd8
+    runc_version: 1.1.12
+    runc_checksum: aadeef400b8f05645768c1476d1023f7875b78f52c7ff1967a6dbce236b8cbd8
     
-#     checksum_algo: sha256
-#     containerd_version: 1.7.16
-#     place: "/home/{{ansible_user}}"
-#     arch: amd64
-#     containerd_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz"
-#     containerd_checksum_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz.sha256sum"
-#   tasks:
-#     - name: Download containerd
-#       get_url:
-#         url: "{{containerd_link}}"
-#         dest: "{{place}}"
-#         checksum: "{{checksum_algo}}:{{containerd_checksum_link}}"
-#       register: containerd_downloaded
+    checksum_algo: sha256
+    containerd_version: 1.7.16
+    place: "/home/{{ansible_user}}"
+    arch: amd64
+    containerd_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz"
+    containerd_checksum_link: "https://github.com/containerd/containerd/releases/download/v{{containerd_version}}/containerd-{{containerd_version}}-linux-{{arch}}.tar.gz.sha256sum"
+  tasks:
+    - name: Download containerd
+      get_url:
+        url: "{{containerd_link}}"
+        dest: "{{place}}"
+        checksum: "{{checksum_algo}}:{{containerd_checksum_link}}"
+      register: containerd_downloaded
 
-#     - name: Unpack containerd
-#       unarchive:
-#         src: "{{containerd_downloaded.dest}}" 
-#         dest: /usr/local
-#         remote_src: yes
+    - name: Unpack containerd
+      unarchive:
+        src: "{{containerd_downloaded.dest}}" 
+        dest: /usr/local
+        remote_src: yes
         
-#     - name: Downloading containerd.service to systemd
-#       get_url:
-#         url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service 
-#         dest: /usr/lib/systemd/system/containerd.service
+    - name: Downloading containerd.service to systemd
+      get_url:
+        url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service 
+        dest: /usr/lib/systemd/system/containerd.service
       
-#     - name: Enable containerd service
-#       systemd:
-#         name: containerd
-#         state: started
-#         enabled: yes
+    - name: Enable containerd service
+      systemd:
+        name: containerd
+        state: started
+        enabled: yes
 
-#     - name: Downloading runc
-#       get_url:
-#          url: "https://github.com/opencontainers/runc/releases/download/v{{runc_version}}/runc.{{arch}}"
-#          dest: "{{place}}"
-#          checksum: "{{checksum_algo}}:{{runc_checksum}}"
-#       register: runc_downloaded
+    - name: Downloading runc
+      get_url:
+         url: "https://github.com/opencontainers/runc/releases/download/v{{runc_version}}/runc.{{arch}}"
+         dest: "{{place}}"
+         checksum: "{{checksum_algo}}:{{runc_checksum}}"
+      register: runc_downloaded
       
 
-#     - name: Installing runc to /usr/local/sbin/runc
-#       command: "install -m 755 {{place}}/runc.amd64 /usr/local/sbin/runc"
-#       tags: task1
+    - name: Installing runc to /usr/local/sbin/runc
+      command: "install -m 755 {{place}}/runc.amd64 /usr/local/sbin/runc"
+      tags: task1
 
-#     - name: Downloading CNI plugins
-#       get_url:
-#         url: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz"
-#         dest: "{{place}}"
-#         checksum: "{{checksum_algo}}:{{CNI_checksum}}"
-#       register: CNI_downloaded
-
-
-#     - name: Create cni/bin
-#       file:
-#         path: /opt/cni/bin
-#         state: directory
-#         mode: '0755'
+    - name: Downloading CNI plugins
+      get_url:
+        url: "https://github.com/containernetworking/plugins/releases/download/v{{CNI_version}}/cni-plugins-linux-{{arch}}-v{{CNI_version}}.tgz"
+        dest: "{{place}}"
+        checksum: "{{checksum_algo}}:{{CNI_checksum}}"
+      register: CNI_downloaded
 
 
-#     - name: Unpack CNI
-#       unarchive:
-#         src: "{{CNI_downloaded.dest}}" 
-#         dest: /opt/cni/bin
-#         remote_src: yes
+    - name: Create cni/bin
+      file:
+        path: /opt/cni/bin
+        state: directory
+        mode: '0755'
 
-# - name:  Containerd configurating
-#   hosts: kuberclient
-#   become: yes
-#   vars:
-#      containerd_config_path: "{{playbook_dir}}/config.toml"
-#   tasks:
-#     - name: Create containerd config.toml
-#       lineinfile:
-#         line: ""
-#         path: "/etc/containerd/config.toml"
-#         create: yes
 
-#     - name: Populate containerd config
-#       shell: containerd config default | tee /etc/containerd/config.toml
+    - name: Unpack CNI
+      unarchive:
+        src: "{{CNI_downloaded.dest}}" 
+        dest: /opt/cni/bin
+        remote_src: yes
+
+- name:  Containerd configurating
+  hosts: kuberclient
+  become: yes
+  vars:
+     containerd_config_path: "{{playbook_dir}}/config.toml"
+  tasks:
+    - name: Create containerd config.toml
+      lineinfile:
+        line: ""
+        path: "/etc/containerd/config.toml"
+        create: yes
+
+    - name: Creating config file
+      shell: containerd config default | tee /etc/containerd/config.toml
   
-#     - name: Set SystemdCgroup to true in containerd config
-#       replace:
-#         path: /etc/containerd/config.toml
-#         regexp: "SystemdCgroup = false"
-#         replace: "SystemdCgroup = true"
+    - name: Set containers systemd support
+      replace:
+        path: /etc/containerd/config.toml
+        regexp: "SystemdCgroup = false"
+        replace: "SystemdCgroup = true"
 
-#     - name: Issue daemon-reload to pick up config changes, restart containerd service
-#       systemd:
-#         state: restarted
-#         daemon_reload: yes
-#         name: containerd
+    - name: Reload containerd demon
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: containerd
 
-# - name:  Install nerdctl
-#   hosts: kuberclient
-#   become: yes
-#   vars:
-#     checksum_algo: sha256
-#     place: "/home/{{ansible_user}}"
+- name:  Install nerdctl
+  hosts: kuberclient
+  become: yes
+  vars:
+    checksum_algo: sha256
+    place: "/home/{{ansible_user}}"
    
-#   tasks:
-#       - name: Download nerdctl
-#         get_url:
-#           url: https://github.com/containerd/nerdctl/releases/download/v2.0.0-beta.4/nerdctl-2.0.0-beta.4-linux-amd64.tar.gz
-#           dest: "{{place}}"
-#         register: downloaded
+  tasks:
+      - name: Download nerdctl
+        get_url:
+          url: https://github.com/containerd/nerdctl/releases/download/v2.0.0-beta.4/nerdctl-2.0.0-beta.4-linux-amd64.tar.gz
+          dest: "{{place}}"
+        register: downloaded
       
-#       - name: Unpack nerdctl
-#         unarchive:
-#           src: "{{downloaded.dest}}" 
-#           dest: /usr/local/bin
-#           remote_src: yes
+      - name: Unpack nerdctl
+        unarchive:
+          src: "{{downloaded.dest}}" 
+          dest: /usr/local/bin
+          remote_src: yes
 
 - name: Network configurating for kubernetes 
   hosts: kuberclient
   become: yes
   tasks:
 
-    # - name: Downloading flannel
-    #   get_url:
-    #     url: https://github.com/flannel-io/flannel/releases/download/v0.18.0/flannel-v0.18.0-linux-amd64.tar.gz
-    #     dest: "/home/{{ansible_user}}/flannel-v0.18.0-linux-amd64.tar.gz"
-    #     mode: '0777'
+    - name: Downloading flannel
+      get_url:
+        url: https://github.com/flannel-io/flannel/releases/download/v0.18.0/flannel-v0.18.0-linux-amd64.tar.gz
+        dest: "/home/{{ansible_user}}/flannel-v0.18.0-linux-amd64.tar.gz"
+        mode: '0777'
 
     - name: Create /opt/bin dir
       file:
@@ -266,7 +266,7 @@
         state: directory
         mode: 0755
 
-    - name: Copy kubeconfig file to remote host home directory
+    - name: Configurating kubectl
       command:
         cmd: "cp -i /etc/kubernetes/admin.conf $HOME/.kube/config"
 
@@ -285,67 +285,118 @@
       retries: 4
       delay: 10
       failed_when: task_result is failed
-      
 
-    # - name: Turning off taints
-    #   shell: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+    - name: Waiting for kube-system pods Ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod --all -n kube-system --timeout=500s
+      register: output
 
-# - name:  Deploying apps and ingress controller
-#   hosts: kuberclient
-#   become: yes
-#   vars:
-#     local_path_ingress_nginx_config: "{{playbook_dir}}/ingress-nginx-hostnetwork-config.yml"
-#     local_path_deploy1: "{{playbook_dir}}/deploy1.yml"
-#     local_path_deploy2: "{{playbook_dir}}/deploy2.yml"
-#     local_path_ingress: "{{playbook_dir}}/ingress.yml"
+    - debug: var=output.stdout_lines
+
+    - name: Waiting for flannel pods Ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod --all -n kube-flannel --timeout=500s
+      register: output
+
+    - debug: var=output.stdout_lines
+
+    - name: Waiting for control-plane node Ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' node --selector=node-role.kubernetes.io/control-plane= --timeout=500s
+      register: output
+
+    - debug: var=output.stdout_lines
+
+    
+
+    - name: Turning off taints
+      shell: kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+    - name: Ensuring that taints are off
+      shell: kubectl describe nodes --selector=node-role.kubernetes.io/control-plane= | grep Taints
+      register: output
+      delay: 2
+      retries: 10
+      until: output.stdout.find("<none>") != -1
+
+
+- name:  Deploying apps and ingress controller
+  hosts: kuberclient
+  become: yes
+  vars:
+    local_path_ingress_nginx_config: "{{playbook_dir}}/ingress-nginx-hostnetwork-config.yml"
+    local_path_deploy1: "{{playbook_dir}}/deploy1.yml"
+    local_path_deploy2: "{{playbook_dir}}/deploy2.yml"
+    local_path_ingress: "{{playbook_dir}}/ingress.yml"
   
-#   tasks:
-#     - name: Copy ingress-nginx-config
-#       copy:
-#          src: "{{local_path_ingress_nginx_config}}"
-#          dest: "/home/{{ansible_user}}/"
+  tasks:
+    - name: Copy ingress-nginx-config
+      copy:
+         src: "{{local_path_ingress_nginx_config}}"
+         dest: "/home/{{ansible_user}}/"
 
-#     - name: Apply ingress-nginx controller
-#       shell: "kubectl apply -f /home/{{ansible_user}}/ingress-nginx-hostnetwork-config.yml"
-#       register: task_result
-#       until: task_result is succeeded
-#       retries: 2
-#       delay: 10
-#       failed_when: task_result is failed
+    - name: Apply ingress-nginx controller
+      shell: "kubectl apply -f /home/{{ansible_user}}/ingress-nginx-hostnetwork-config.yml"
+      register: task_result
+      until: task_result is succeeded
+      retries: 2
+      delay: 10
+      failed_when: task_result is failed
+
+    - name: Waiting for ingress controller ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod -A --selector=app.kubernetes.io/component=controller --timeout=500s
+      register: output
+
+    - debug: var=output.stdout_lines
+
+    - name: Copy deploy1 
+      copy:
+         src: "{{local_path_deploy1}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply deploy1
+      shell: "kubectl apply -f /home/{{ansible_user}}/deploy1.yml"
       
-#     - name: Copy deploy1 
-#       copy:
-#          src: "{{local_path_deploy1}}"
-#          dest: "/home/{{ansible_user}}/"
+    - name: Copy deploy2
+      copy:
+         src: "{{local_path_deploy2}}"
+         dest: "/home/{{ansible_user}}/"
 
-#     - name: Apply deploy1
-#       shell: "kubectl apply -f /home/{{ansible_user}}/deploy1.yml"
-      
-#     - name: Copy deploy2
-#       copy:
-#          src: "{{local_path_deploy2}}"
-#          dest: "/home/{{ansible_user}}/"
+    - name: Apply deploy2
+      shell: "kubectl apply -f /home/{{ansible_user}}/deploy2.yml"
 
-#     - name: Apply deploy2
-#       shell: "kubectl apply -f /home/{{ansible_user}}/deploy2.yml"
-      
+    - name: Waiting for pod label "app=hello-2" ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod --selector=app=hello-2 --timeout=500s
+      register: output
+    
+    - debug: var=output.stdout_lines
 
-#     - name: Copy ingress
-#       copy:
-#          src: "{{local_path_ingress}}"
-#          dest: "/home/{{ansible_user}}/"
+    - name: Waitign for pod label "app=hello-1" ready
+      shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod --selector=app=hello-1 --timeout=500s
+      register: output
 
-#     - name: Apply ingress
-#       shell: "kubectl apply -f /home/{{ansible_user}}/ingress.yml"
-#       register: task_result
-#       until: task_result is succeeded
-#       retries: 4
-#       delay: 10
-#       failed_when: task_result is failed
+    - debug: var=output.stdout_lines
+
+    - name: Copy ingress
+      copy:
+         src: "{{local_path_ingress}}"
+         dest: "/home/{{ansible_user}}/"
+
+    - name: Apply ingress
+      shell: "kubectl apply -f /home/{{ansible_user}}/ingress.yml"
+      register: task_result
+      until: task_result is succeeded
+      retries: 4
+      delay: 10
+      failed_when: task_result is failed
+
+    - name: Waiting for ingress get ip
+      shell: "kubectl get ingress -o=jsonpath='{.items[*].status.loadBalancer.ingress[0].ip}'"
+      register: output
+      delay: 10
+      retries: 10
+      until: output.stdout.find(ansible_host) != -1
 
 
-#     - name: Add kubervm.internal in remote hosts config
-#       lineinfile:
-#         path: /etc/hosts
-#         line: "{{ansible_host}} kubervm.internal"
-#         insertafter: EOF
+    - name: Add kubervm.internal in remote hosts config
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ansible_host}} kubervm.internal"
+        insertafter: EOF
