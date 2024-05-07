@@ -1,4 +1,4 @@
-ansible_host: <VM ip (configurated on VM boot>
-ansible_user: <remote user_name>
-ansible_password: <remote paswd>
-ansible_become_pass: <remote paswd>
+ansible_host: 192.168.56.2 
+ansible_user: user 
+ansible_password: 1234
+ansible_become_pass: 1234
