@@ -294,9 +294,13 @@
 
     - name: Waiting for flannel pods Ready
       shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' pod --all -n kube-flannel --timeout=500s
-      register: output
+      register: task_result
+      until: task_result is succeeded
+      retries: 4
+      delay: 10
+      failed_when: task_result is failed
 
-    - debug: var=output.stdout_lines
+    - debug: var=task_result.stdout_lines
 
     - name: Waiting for control-plane node Ready
       shell: kubectl wait --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' node --selector=node-role.kubernetes.io/control-plane= --timeout=500s
